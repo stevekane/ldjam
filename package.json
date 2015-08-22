@@ -1,0 +1,33 @@
+{
+  "name": "ldjam",
+  "version": "1.0.0",
+  "description": "Ludum Dare gamejam entry",
+  "main": "server.js",
+  "scripts": {
+    "test": "node test",
+    "watch": "watchify -t [babelify --blacklist regenerator] -o public/game.js src/main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/stevekane/ldjam.git"
+  },
+  "keywords": [
+    "ludum",
+    "dare",
+    "web",
+    "webgl",
+    "game"
+  ],
+  "author": "Steve Kane",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stevekane/ldjam/issues"
+  },
+  "homepage": "https://github.com/stevekane/ldjam#readme",
+  "devDependencies": {
+    "babelify": "^6.2.0"
+  },
+  "dependencies": {
+    "pixi.js": "^3.0.7"
+  }
+}
