@@ -5,7 +5,8 @@ import GameState from '../GameState'
 import {Monster, Fireball} from '../entities'
 import {has, whereProp, hasThree} from '../predicates'
 import {findWhere} from '../query'
-import {remove} from '../utils'
+import {doesCollide} from '../physics'
+import {remove, propLessThan, both} from '../utils'
 
 const GRAVITY = 0.5
 const BUTTONS = {
@@ -19,7 +20,44 @@ const BUTTONS = {
 
 function * checkWinningCondition (state) {
   while (true) {
-    yield false
+    yield 
+  }
+}
+
+function * updateAABBs (state) {
+  while (true) {
+    yield 
+    let {entities} = state
+
+    for (let e of findWhere(has('aabb'), entities)) {
+      e.aabb.position.x = e.worldTransform.tx 
+      e.aabb.position.y = e.worldTransform.ty
+      e.aabb.size.x = e.width
+      e.aabb.size.y = e.height
+    }
+  }
+}
+
+function * getColliderPairs (entities) {
+  let query1 = has('aabb')
+
+  for (let e1 of findWhere(query1, entities)) {
+    let query2 = both(has('aabb'), propLessThan('id', e1))
+
+    for (let e2 of findWhere(query2, entities)) {
+      if (doesCollide(e1.aabb, e2.aabb)) yield([e1, e2])
+    }
+  }
+}
+
+function * checkCollisions (state) {
+  while (true) {
+    yield
+    let {entities} = state 
+
+    for (let [e1, e2] of getColliderPairs(entities)) {
+      console.log(e1.id, 'hits', e2.id) 
+    }
   }
 }
 
@@ -35,14 +73,6 @@ function * doPhysics (state) {
       e.position.x += e.velocity.x * dT 
       e.position.y += e.velocity.y * dT 
     }
-  }
-}
-
-function * checkCollision (state) {
-  while (true) {
-    yield 
-
-    let {game, entities} = state
   }
 }
 
@@ -100,36 +130,55 @@ function * processInput (state) {
   }
 }
 
-function * printDebug (state) {
+function *drawDebug ({entities, debug}) {
   while (true) {
-    yield
-    console.log(state.entities.length) 
-  } 
+    yield 
+
+    debug.clear()
+    debug.lineStyle(2, 0x0000FF, 0.50)
+    debug.beginFill(0xFF700B, 0.50)
+    for (let e of findWhere(has('aabb'), entities)) {
+      debug.drawRect(
+        e.aabb.x1,
+        e.aabb.y1,
+        e.aabb.x2 - e.aabb.x1,
+        e.aabb.y2 - e.aabb.y1
+      )
+    }
+  }
 }
 
 export default function Main () {
   let tasks = [
     //printDebug(this),
     processInput(this),
+    updateAABBs(this),
     doPhysics(this),
+    checkCollisions(this),
     killExpired(this),
-    checkWinningCondition(this)
+    checkWinningCondition(this),
+    drawDebug(this)
   ]
   let ui = new Pixi.Container
   let fg = new Pixi.Container
   let bg = new Pixi.Container
   let m = new Monster({x: 100, y: 200})
-  let entities = [m]
+  let testM = new Monster({x: 80, y: 200})
+  let entities = [m, testM]
+  let debug = new Pixi.Graphics()
 
   //TODO: DEBUGGING/TESTING
   m.acceleration.y = 0
+  testM.acceleration.y = 0
 
   //setup ui
   ui.zPosition = 10
+  ui.addChild(debug)
 
   //setup fg
   fg.zPosition = 0
   fg.addChild(m)
+  fg.addChild(testM)
 
   //setup bg
   bg.zPosition = -10
@@ -139,9 +188,10 @@ export default function Main () {
   this.ui = ui
   this.fg = fg
   this.bg = bg
-  this.stage.addChild(ui)
-  this.stage.addChild(fg)
+  this.debug = debug
   this.stage.addChild(bg)
+  this.stage.addChild(fg)
+  this.stage.addChild(ui)
   this.player = m
   this.paused = false
 }

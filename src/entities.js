@@ -1,14 +1,19 @@
 'use strict'
 
 import {Sprite, Texture} from 'pixi.js'
+import {AABB} from './physics'
+import {v4 as UUID} from 'node-uuid'
 
 const GRAVITY = 0.00981
 
 class CoreSprite extends Sprite {
   constructor (fileName) {
     super(new Texture.fromImage(fileName))
+
+    this.id = UUID()
     this.anchor.x = 0.5
     this.anchor.y = 0.5
+    this.aabb = new AABB({x: 0, y: 0}, {x: 0, y: 0})
 
     Object.defineProperty(this, 'direction', {
       get () { 

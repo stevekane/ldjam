@@ -28,6 +28,7 @@
     "babelify": "^6.2.0"
   },
   "dependencies": {
+    "node-uuid": "^1.4.3",
     "pixi.js": "^3.0.7"
   }
 }
