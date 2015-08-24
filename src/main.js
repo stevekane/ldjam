@@ -20,7 +20,7 @@ const game = new Game(clock, [intro, main, gameOver], tasks)
 
 game.tasks.push(tickClock(game.clock, Date.now()))
 game.tasks.push(runTasksForState(game))
-game.state = gameOver
+game.state = main
 document.body.appendChild(renderer.view)
 setInterval(() => update(game), 33)
 render(renderer, game)

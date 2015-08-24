@@ -24,7 +24,7 @@ function * listenForButtonPress ({game}) {
 
     for (let button of controller.buttons) {
       //TODO: have slightly better api for specifying new state
-      if (button.pressed) game.state = game.states[0]
+      if (button.pressed) game.state = game.states[1]
     }
   }
 }
@@ -51,6 +51,7 @@ export default function GameOver () {
   ui.zPosition = 10
   ui.addChild(uiIndex.gameoverText)
   ui.addChild(uiIndex.pressButtonText)
+
   GameState.call(this, 'gameover', tasks)
   this.uiIndex = uiIndex
   this.stage.addChild(ui)

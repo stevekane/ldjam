@@ -26545,7 +26545,154 @@ function render(renderer, game) {
   }
 }
 
-},{"./tasks":137}],134:[function(require,module,exports){
+},{"./tasks":140}],134:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _pixiJs = require('pixi.js');
+
+var GRAVITY = 0.00981;
+
+var CoreSprite = (function (_Sprite) {
+  _inherits(CoreSprite, _Sprite);
+
+  function CoreSprite(fileName) {
+    _classCallCheck(this, CoreSprite);
+
+    _get(Object.getPrototypeOf(CoreSprite.prototype), 'constructor', this).call(this, new _pixiJs.Texture.fromImage(fileName));
+    this.anchor.x = 0.5;
+    this.anchor.y = 0.5;
+
+    Object.defineProperty(this, 'direction', {
+      get: function get() {
+        return this.scale.x > 0 ? 'left' : 'right';
+      }
+    });
+  }
+
+  return CoreSprite;
+})(_pixiJs.Sprite);
+
+var Monster = (function (_CoreSprite) {
+  _inherits(Monster, _CoreSprite);
+
+  function Monster(pos) {
+    _classCallCheck(this, Monster);
+
+    _get(Object.getPrototypeOf(Monster.prototype), 'constructor', this).call(this, 'bowser.gif');
+    this.position = pos;
+    this.velocity = { x: 0, y: 0 };
+    this.acceleration = { x: 0, y: GRAVITY };
+    this.walkSpeed = 0.5;
+    this.fireballTimeout = 300;
+    this.nextFireTime = 0;
+  }
+
+  return Monster;
+})(CoreSprite);
+
+exports.Monster = Monster;
+
+var Fireball = (function (_CoreSprite2) {
+  _inherits(Fireball, _CoreSprite2);
+
+  function Fireball(pos, spawnTime) {
+    _classCallCheck(this, Fireball);
+
+    _get(Object.getPrototypeOf(Fireball.prototype), 'constructor', this).call(this, 'fireball.gif');
+    this.position = pos;
+    this.velocity = { x: 0, y: 0 };
+    this.acceleration = { x: 0, y: GRAVITY };
+    this.scale.x = 0.5;
+    this.scale.y = 0.5;
+    this.deathTime = spawnTime + 2000;
+  }
+
+  return Fireball;
+})(CoreSprite);
+
+exports.Fireball = Fireball;
+
+},{"pixi.js":112}],135:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+exports.has = has;
+exports.hasBoth = hasBoth;
+exports.hasThree = hasThree;
+exports.whereProp = whereProp;
+
+function has(prop) {
+  return function (e) {
+    return !!e[prop];
+  };
+}
+
+function hasBoth(p1, p2) {
+  return function (e) {
+    return e[p1] && e[p2];
+  };
+}
+
+function hasThree(p1, p2, p3) {
+  return function (e) {
+    return e[p1] && e[p2] && e[p3];
+  };
+}
+
+function whereProp(prop, value) {
+  return function (e) {
+    return e[prop] === value;
+  };
+}
+
+},{}],136:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+exports.findWhere = findWhere;
+
+function* findWhere(predFn, list) {
+  var _iteratorNormalCompletion = true;
+  var _didIteratorError = false;
+  var _iteratorError = undefined;
+
+  try {
+    for (var _iterator = list[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+      var item = _step.value;
+
+      if (predFn(item)) yield item;
+    }
+  } catch (err) {
+    _didIteratorError = true;
+    _iteratorError = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion && _iterator['return']) {
+        _iterator['return']();
+      }
+    } finally {
+      if (_didIteratorError) {
+        throw _iteratorError;
+      }
+    }
+  }
+}
+
+},{}],137:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26593,7 +26740,7 @@ function* listenForButtonPress(_ref) {
         var button = _step.value;
 
         //TODO: have slightly better api for specifying new state
-        if (button.pressed) game.state = game.states[0];
+        if (button.pressed) game.state = game.states[1];
       }
     } catch (err) {
       _didIteratorError = true;
@@ -26631,6 +26778,7 @@ function GameOver() {
   ui.zPosition = 10;
   ui.addChild(uiIndex.gameoverText);
   ui.addChild(uiIndex.pressButtonText);
+
   _GameState2['default'].call(this, 'gameover', tasks);
   this.uiIndex = uiIndex;
   this.stage.addChild(ui);
@@ -26638,7 +26786,7 @@ function GameOver() {
 
 module.exports = exports['default'];
 
-},{"../GameState":131,"pixi.js":112}],135:[function(require,module,exports){
+},{"../GameState":131,"pixi.js":112}],138:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26682,8 +26830,46 @@ function* updateUI(state) {
   }
 }
 
+function* listenForButtonPress(_ref) {
+  var game = _ref.game;
+
+  while (true) {
+    yield;
+    var pads = navigator.getGamepads();
+    var controller = pads[0];
+
+    if (!controller) continue;
+
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+      for (var _iterator = controller.buttons[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+        var button = _step.value;
+
+        //TODO: have slightly better api for specifying new state
+        if (button.pressed) game.state = game.states[1];
+      }
+    } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion && _iterator['return']) {
+          _iterator['return']();
+        }
+      } finally {
+        if (_didIteratorError) {
+          throw _iteratorError;
+        }
+      }
+    }
+  }
+}
+
 function Intro() {
-  var tasks = [checkForController(this), updateUI(this)];
+  var tasks = [checkForController(this), listenForButtonPress(this), updateUI(this)];
   var uiIndex = {
     controllerStatus: new _pixiJs2['default'].Text('disconnected', { fill: '#ffffff' }),
     titleText: new _pixiJs2['default'].Text('The Title', { font: 'bold 60px Arial', fill: '#ffffff' })
@@ -26710,7 +26896,7 @@ function Intro() {
 
 module.exports = exports['default'];
 
-},{"../GameState":131,"pixi.js":112}],136:[function(require,module,exports){
+},{"../GameState":131,"pixi.js":112}],139:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26720,19 +26906,208 @@ exports['default'] = Main;
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
+var _pixiJs = require('pixi.js');
+
+var _pixiJs2 = _interopRequireDefault(_pixiJs);
+
 var _GameState = require('../GameState');
 
 var _GameState2 = _interopRequireDefault(_GameState);
 
+var _entities = require('../entities');
+
+var _predicates = require('../predicates');
+
+var _query = require('../query');
+
+var _utils = require('../utils');
+
+var GRAVITY = 0.5;
+var BUTTONS = {
+  UP: 12,
+  RIGHT: 15,
+  DOWN: 13,
+  LEFT: 14,
+  A: 0,
+  B: 1
+};
+
+function* checkWinningCondition(state) {
+  while (true) {
+    yield false;
+  }
+}
+
+function* doPhysics(state) {
+  while (true) {
+    yield;
+    var game = state.game;
+    var entities = state.entities;
+    var dT = game.clock.dT;
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+
+      for (var _iterator = (0, _query.findWhere)((0, _predicates.hasThree)('position', 'velocity', 'acceleration'), entities)[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+        var e = _step.value;
+
+        e.velocity.x += e.acceleration.x * dT;
+        e.velocity.y += e.acceleration.y * dT;
+        e.position.x += e.velocity.x * dT;
+        e.position.y += e.velocity.y * dT;
+      }
+    } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion && _iterator['return']) {
+          _iterator['return']();
+        }
+      } finally {
+        if (_didIteratorError) {
+          throw _iteratorError;
+        }
+      }
+    }
+  }
+}
+
+function* checkCollision(state) {
+  while (true) {
+    yield;
+
+    var game = state.game;
+    var entities = state.entities;
+  }
+}
+
+function* killExpired(state) {
+  while (true) {
+    yield;
+
+    var game = state.game;
+    var entities = state.entities;
+    var thisTime = game.clock.thisTime;
+    var _iteratorNormalCompletion2 = true;
+    var _didIteratorError2 = false;
+    var _iteratorError2 = undefined;
+
+    try {
+
+      for (var _iterator2 = (0, _query.findWhere)((0, _predicates.has)('deathTime'), entities)[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+        var e = _step2.value;
+
+        if (e.deathTime < thisTime) {
+          (0, _utils.remove)(state.entities, e);
+          state.fg.removeChild(e);
+        }
+      }
+    } catch (err) {
+      _didIteratorError2 = true;
+      _iteratorError2 = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion2 && _iterator2['return']) {
+          _iterator2['return']();
+        }
+      } finally {
+        if (_didIteratorError2) {
+          throw _iteratorError2;
+        }
+      }
+    }
+  }
+}
+
+function* processInput(state) {
+  while (true) {
+    yield;
+    var player = state.player;
+    var _state$game$clock = state.game.clock;
+    var dT = _state$game$clock.dT;
+    var thisTime = _state$game$clock.thisTime;
+
+    var controller = navigator.getGamepads()[0];
+    var i = 0;
+
+    if (!controller) {
+      state.paused = true;
+      continue;
+    }
+
+    if (controller.buttons[BUTTONS.RIGHT].pressed) {
+      player.position.x += player.walkSpeed * dT;
+      player.scale.x = -1.0;
+    }
+    if (controller.buttons[BUTTONS.LEFT].pressed) {
+      player.position.x -= player.walkSpeed * dT;
+      player.scale.x = 1.0;
+    }
+    if (controller.buttons[BUTTONS.A].pressed) {
+      if (player.nextFireTime < thisTime) {
+        var scalar = player.scale.x < 0 ? 1 : -1;
+        var x = player.position.x + scalar * 20;
+        var y = player.position.y;
+        var fb = new _entities.Fireball({ x: x, y: y }, thisTime);
+
+        fb.velocity.y = -1.2;
+        fb.velocity.x = scalar * 1.2;
+        player.nextFireTime = thisTime + player.fireballTimeout;
+        state.entities.push(fb);
+        state.fg.addChild(fb);
+      }
+    }
+  }
+}
+
+function* printDebug(state) {
+  while (true) {
+    yield;
+    console.log(state.entities.length);
+  }
+}
+
 function Main() {
-  var tasks = [];
+  var tasks = [
+  //printDebug(this),
+  processInput(this), doPhysics(this), killExpired(this), checkWinningCondition(this)];
+  var ui = new _pixiJs2['default'].Container();
+  var fg = new _pixiJs2['default'].Container();
+  var bg = new _pixiJs2['default'].Container();
+  var m = new _entities.Monster({ x: 100, y: 200 });
+  var entities = [m];
+
+  //TODO: DEBUGGING/TESTING
+  m.acceleration.y = 0;
+
+  //setup ui
+  ui.zPosition = 10;
+
+  //setup fg
+  fg.zPosition = 0;
+  fg.addChild(m);
+
+  //setup bg
+  bg.zPosition = -10;
 
   _GameState2['default'].call(this, 'main', tasks);
+  this.entities = entities;
+  this.ui = ui;
+  this.fg = fg;
+  this.bg = bg;
+  this.stage.addChild(ui);
+  this.stage.addChild(fg);
+  this.stage.addChild(bg);
+  this.player = m;
+  this.paused = false;
 }
 
 module.exports = exports['default'];
 
-},{"../GameState":131}],137:[function(require,module,exports){
+},{"../GameState":131,"../entities":134,"../predicates":135,"../query":136,"../utils":141,"pixi.js":112}],140:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26769,7 +27144,19 @@ function* tickClock(clock, startTime) {
   }
 }
 
-},{}],138:[function(require,module,exports){
+},{}],141:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+exports.remove = remove;
+
+function remove(array, item) {
+  array.splice(array.indexOf(item), 1);
+}
+
+},{}],142:[function(require,module,exports){
 'use strict';
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
@@ -26813,11 +27200,11 @@ var game = new _core.Game(clock, [intro, main, gameOver], tasks);
 
 game.tasks.push((0, _tasks.tickClock)(game.clock, Date.now()));
 game.tasks.push((0, _tasks.runTasksForState)(game));
-game.state = gameOver;
+game.state = main;
 document.body.appendChild(renderer.view);
 setInterval(function () {
   return (0, _core.update)(game);
 }, 33);
 (0, _core.render)(renderer, game);
 
-},{"./Clock":130,"./World":132,"./core":133,"./states/GameOver":134,"./states/Intro":135,"./states/Main":136,"./tasks":137,"pixi.js":112}]},{},[138]);
+},{"./Clock":130,"./World":132,"./core":133,"./states/GameOver":137,"./states/Intro":138,"./states/Main":139,"./tasks":140,"pixi.js":112}]},{},[142]);

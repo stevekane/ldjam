@@ -28,9 +28,25 @@ function * updateUI (state) {
   }
 }
 
+function * listenForButtonPress ({game}) {
+  while (true) {
+    yield
+    let pads = navigator.getGamepads()
+    let controller = pads[0]
+
+    if (!controller) continue
+
+    for (let button of controller.buttons) {
+      //TODO: have slightly better api for specifying new state
+      if (button.pressed) game.state = game.states[1]
+    }
+  }
+}
+
 export default function Intro () {
   let tasks = [
     checkForController(this),
+    listenForButtonPress(this),
     updateUI(this)
   ]
   let uiIndex = {
