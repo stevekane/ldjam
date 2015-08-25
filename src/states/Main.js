@@ -2,18 +2,29 @@
 
 import Pixi from 'pixi.js'
 import GameState from '../GameState'
-import {Monster, Fireball} from '../entities'
+import {Monster, Fireball, Ground} from '../entities'
 import {has, whereProp, hasThree} from '../predicates'
 import {findWhere} from '../query'
-import {doesCollide} from '../physics'
+import {doesCollide, resolveCollision} from '../physics'
 import {remove, propLessThan, both} from '../utils'
 
 const GRAVITY = 0.5
+//TODO: need runtime code to handle different platforms for now use based on dev-os
+//WINDOWS
+//const BUTTONS = {
+//  UP: 12,
+//  RIGHT: 15,
+//  DOWN: 13,
+//  LEFT: 14,
+//  A: 0,
+//  B: 1
+//}
+//OSX
 const BUTTONS = {
-  UP: 12,
-  RIGHT: 15,
-  DOWN: 13,
-  LEFT: 14,
+  UP: 11,
+  RIGHT: 14,
+  DOWN: 12,
+  LEFT: 13,
   A: 0,
   B: 1
 }
@@ -56,7 +67,7 @@ function * checkCollisions (state) {
     let {entities} = state 
 
     for (let [e1, e2] of getColliderPairs(entities)) {
-      console.log(e1.id, 'hits', e2.id) 
+      //handleCollision(e1, e2)
     }
   }
 }
@@ -64,14 +75,23 @@ function * checkCollisions (state) {
 function * doPhysics (state) {
   while (true) {
     yield
-    let {game, entities} = state 
+    let {game, entities, GROUND_Y} = state 
     let {dT} = game.clock
 
     for (let e of findWhere(hasThree('position', 'velocity', 'acceleration'), entities)) {
+      let newYVel = e.velocity.y + e.acceleration.y * dT
+      let newYPos = e.position.y + newYVel * dT
+      let groundPenetrationDepth = (newYPos + e.height / 2) - GROUND_Y
+
       e.velocity.x += e.acceleration.x * dT 
-      e.velocity.y += e.acceleration.y * dT 
       e.position.x += e.velocity.x * dT 
-      e.position.y += e.velocity.y * dT 
+      if (groundPenetrationDepth > 0) {
+        e.velocity.y = 0
+        e.position.y = GROUND_Y - (e.height / 2)
+      } else {
+        e.velocity.y = newYVel
+        e.position.y = newYPos
+      }
     }
   }
 }
@@ -98,7 +118,7 @@ function * processInput (state) {
     let {player} = state
     let {dT, thisTime} = state.game.clock
     let controller = navigator.getGamepads()[0]
-    var i = 0
+    var xVel = 0
 
     if (!controller) {
       state.paused = true
@@ -106,11 +126,11 @@ function * processInput (state) {
     }
 
     if (controller.buttons[BUTTONS.RIGHT].pressed) {
-      player.position.x += player.walkSpeed * dT
+      xVel = xVel + player.walkSpeed
       player.scale.x = -1.0
     }
     if (controller.buttons[BUTTONS.LEFT].pressed) {
-      player.position.x -= player.walkSpeed * dT
+      xVel = xVel - player.walkSpeed
       player.scale.x = 1.0
     }
     if (controller.buttons[BUTTONS.A].pressed) {
@@ -127,6 +147,7 @@ function * processInput (state) {
         state.fg.addChild(fb)
       }
     }
+    player.velocity.x = xVel
   }
 }
 
@@ -163,13 +184,8 @@ export default function Main () {
   let fg = new Pixi.Container
   let bg = new Pixi.Container
   let m = new Monster({x: 100, y: 200})
-  let testM = new Monster({x: 80, y: 200})
-  let entities = [m, testM]
+  let entities = [m]
   let debug = new Pixi.Graphics()
-
-  //TODO: DEBUGGING/TESTING
-  m.acceleration.y = 0
-  testM.acceleration.y = 0
 
   //setup ui
   ui.zPosition = 10
@@ -178,7 +194,6 @@ export default function Main () {
   //setup fg
   fg.zPosition = 0
   fg.addChild(m)
-  fg.addChild(testM)
 
   //setup bg
   bg.zPosition = -10
@@ -194,5 +209,6 @@ export default function Main () {
   this.stage.addChild(ui)
   this.player = m
   this.paused = false
+  this.GROUND_Y = 400
 }
 

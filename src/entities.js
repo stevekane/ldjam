@@ -46,3 +46,13 @@ export class Fireball extends CoreSprite {
     this.deathTime = spawnTime + 2000
   }
 }
+
+export class Ground extends CoreSprite {
+  constructor (pos) {
+    super('ground.png')  
+    this.position = pos
+    this.velocity = {x: 0, y: 0}
+    this.acceleration = {x: 0, y: 0}
+    this.static = true
+  }
+}
