@@ -2,32 +2,34 @@
 
 import Pixi from 'pixi.js'
 import GameState from '../GameState'
-import {Monster, Fireball, Ground} from '../entities'
+import {Monster, Fireball} from '../entities'
 import {has, whereProp, hasThree} from '../predicates'
 import {findWhere} from '../query'
 import {doesCollide, resolveCollision} from '../physics'
 import {remove, propLessThan, both} from '../utils'
 
+const {abs} = Math
+
 const GRAVITY = 0.5
 //TODO: need runtime code to handle different platforms for now use based on dev-os
 //WINDOWS
-//const BUTTONS = {
-//  UP: 12,
-//  RIGHT: 15,
-//  DOWN: 13,
-//  LEFT: 14,
-//  A: 0,
-//  B: 1
-//}
-//OSX
 const BUTTONS = {
-  UP: 11,
-  RIGHT: 14,
-  DOWN: 12,
-  LEFT: 13,
+  UP: 12,
+  RIGHT: 15,
+  DOWN: 13,
+  LEFT: 14,
   A: 0,
   B: 1
 }
+//OSX
+//const BUTTONS = {
+//  UP: 11,
+//  RIGHT: 14,
+//  DOWN: 12,
+//  LEFT: 13,
+//  A: 0,
+//  B: 1
+//}
 
 function * checkWinningCondition (state) {
   while (true) {
@@ -86,7 +88,7 @@ function * doPhysics (state) {
       e.velocity.x += e.acceleration.x * dT 
       e.position.x += e.velocity.x * dT 
       if (groundPenetrationDepth > 0) {
-        e.velocity.y = 0
+        e.velocity.y = -1 * e.elasticity * e.velocity.y
         e.position.y = GROUND_Y - (e.height / 2)
       } else {
         e.velocity.y = newYVel
@@ -125,6 +127,7 @@ function * processInput (state) {
       continue
     }
 
+    //MOVEMENT
     if (controller.buttons[BUTTONS.RIGHT].pressed) {
       xVel = xVel + player.walkSpeed
       player.scale.x = -1.0
@@ -133,6 +136,9 @@ function * processInput (state) {
       xVel = xVel - player.walkSpeed
       player.scale.x = 1.0
     }
+    player.velocity.x = xVel
+
+    //ACTIONS
     if (controller.buttons[BUTTONS.A].pressed) {
       if (player.nextFireTime < thisTime) {
         let scalar = player.scale.x < 0 ? 1 : -1
@@ -147,7 +153,9 @@ function * processInput (state) {
         state.fg.addChild(fb)
       }
     }
-    player.velocity.x = xVel
+    if (controller.buttons[BUTTONS.B].pressed) {
+      player.velocity.y -= 0.7
+    }
   }
 }
 
@@ -173,12 +181,12 @@ export default function Main () {
   let tasks = [
     //printDebug(this),
     processInput(this),
-    updateAABBs(this),
     doPhysics(this),
+    updateAABBs(this),
     checkCollisions(this),
     killExpired(this),
     checkWinningCondition(this),
-    drawDebug(this)
+    //drawDebug(this)
   ]
   let ui = new Pixi.Container
   let fg = new Pixi.Container

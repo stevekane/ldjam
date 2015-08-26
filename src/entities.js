@@ -32,6 +32,7 @@ export class Monster extends CoreSprite {
     this.walkSpeed = 0.5
     this.fireballTimeout = 300
     this.nextFireTime = 0
+    this.elasticity = 0
   }
 }
 
@@ -44,15 +45,6 @@ export class Fireball extends CoreSprite {
     this.scale.x = 0.5
     this.scale.y = 0.5
     this.deathTime = spawnTime + 2000
-  }
-}
-
-export class Ground extends CoreSprite {
-  constructor (pos) {
-    super('ground.png')  
-    this.position = pos
-    this.velocity = {x: 0, y: 0}
-    this.acceleration = {x: 0, y: 0}
-    this.static = true
+    this.elasticity = 1.2
   }
 }
