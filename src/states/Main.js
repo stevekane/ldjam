@@ -9,8 +9,6 @@ import {doesCollide, resolveCollision} from '../physics'
 import {remove, propLessThan, both} from '../utils'
 
 const {abs} = Math
-
-const GRAVITY = 0.5
 //TODO: need runtime code to handle different platforms for now use based on dev-os
 //WINDOWS
 const BUTTONS = {
