@@ -26698,10 +26698,15 @@ Object.defineProperty(exports, '__esModule', {
 });
 exports['default'] = Clock;
 
-function Clock(startTime) {
+function Clock(startTime, targetInterval) {
   this.lastTime = 0;
   this.thisTime = 0;
   this.dT = 0;
+  this.tick = function () {
+    this.lastTime = this.thisTime;
+    this.thisTime = (Date.now() - startTime) / targetInterval;
+    this.dT = this.thisTime - this.lastTime;
+  };
 }
 
 module.exports = exports['default'];
@@ -26752,11 +26757,11 @@ exports.render = render;
 
 var _tasks = require('./tasks');
 
-function Game(clock, states, tasks) {
+function Game(clock, states) {
   this.clock = clock;
   this.states = states;
   this.state = states[0];
-  this.tasks = tasks;
+  this.tasks = [(0, _tasks.runTasksForState)(this)];
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
@@ -26783,6 +26788,7 @@ function Game(clock, states, tasks) {
 }
 
 function update(game) {
+  game.clock.tick();
   (0, _tasks.runTasks)(game.tasks);
 }
 
@@ -26813,12 +26819,12 @@ var _physics = require('./physics');
 
 var _nodeUuid = require('node-uuid');
 
-var GRAVITY = 0.00981;
+var GRAVITY = 6;
 
 var CoreSprite = (function (_Sprite) {
   _inherits(CoreSprite, _Sprite);
 
-  function CoreSprite(fileName) {
+  function CoreSprite(fileName, position) {
     _classCallCheck(this, CoreSprite);
 
     _get(Object.getPrototypeOf(CoreSprite.prototype), 'constructor', this).call(this, new _pixiJs.Texture.fromImage(fileName));
@@ -26827,6 +26833,9 @@ var CoreSprite = (function (_Sprite) {
     this.anchor.x = 0.5;
     this.anchor.y = 0.5;
     this.aabb = new _physics.AABB({ x: 0, y: 0 }, { x: 0, y: 0 });
+    this.position = position;
+    this.velocity = { x: 0, y: 0 };
+    this.acceleration = { x: 0, y: GRAVITY };
 
     Object.defineProperty(this, 'direction', {
       get: function get() {
@@ -26841,13 +26850,10 @@ var CoreSprite = (function (_Sprite) {
 var Monster = (function (_CoreSprite) {
   _inherits(Monster, _CoreSprite);
 
-  function Monster(pos) {
+  function Monster(position) {
     _classCallCheck(this, Monster);
 
-    _get(Object.getPrototypeOf(Monster.prototype), 'constructor', this).call(this, 'bowser.gif');
-    this.position = pos;
-    this.velocity = { x: 0, y: 0 };
-    this.acceleration = { x: 0, y: GRAVITY };
+    _get(Object.getPrototypeOf(Monster.prototype), 'constructor', this).call(this, 'bowser.gif', position);
     this.walkSpeed = 0.5;
     this.fireballTimeout = 300;
     this.nextFireTime = 0;
@@ -26862,13 +26868,10 @@ exports.Monster = Monster;
 var Fireball = (function (_CoreSprite2) {
   _inherits(Fireball, _CoreSprite2);
 
-  function Fireball(pos, spawnTime) {
+  function Fireball(position, spawnTime) {
     _classCallCheck(this, Fireball);
 
-    _get(Object.getPrototypeOf(Fireball.prototype), 'constructor', this).call(this, 'fireball.gif');
-    this.position = pos;
-    this.velocity = { x: 0, y: 0 };
-    this.acceleration = { x: 0, y: GRAVITY };
+    _get(Object.getPrototypeOf(Fireball.prototype), 'constructor', this).call(this, 'fireball.gif', position);
     this.scale.x = 0.5;
     this.scale.y = 0.5;
     this.deathTime = spawnTime + 2000;
@@ -26879,6 +26882,44 @@ var Fireball = (function (_CoreSprite2) {
 })(CoreSprite);
 
 exports.Fireball = Fireball;
+
+var Enemy = (function (_CoreSprite3) {
+  _inherits(Enemy, _CoreSprite3);
+
+  function Enemy(position, spawnTime) {
+    _classCallCheck(this, Enemy);
+
+    _get(Object.getPrototypeOf(Enemy.prototype), 'constructor', this).call(this, 'fireball.gif', position);
+    this.scale.x = 0.4;
+    this.scale.y = 0.4;
+    this.deathTime = spawnTime + 100;
+    this.elasticity = 1.0;
+  }
+
+  return Enemy;
+})(CoreSprite);
+
+exports.Enemy = Enemy;
+
+var Spawn = (function (_PIXI$Container) {
+  _inherits(Spawn, _PIXI$Container);
+
+  function Spawn(fn, rate, spawnVelocity, variance, position) {
+    _classCallCheck(this, Spawn);
+
+    _get(Object.getPrototypeOf(Spawn.prototype), 'constructor', this).call(this);
+    this.fn = fn;
+    this.rate = rate;
+    this.lastEvent = 0;
+    this.position = position;
+    this.spawnVelocity = spawnVelocity;
+    this.variance = variance;
+  }
+
+  return Spawn;
+})(PIXI.Container);
+
+exports.Spawn = Spawn;
 
 },{"./physics":136,"node-uuid":8,"pixi.js":113}],136:[function(require,module,exports){
 'use strict';
@@ -27298,7 +27339,7 @@ var _GameState = require('../GameState');
 
 var _GameState2 = _interopRequireDefault(_GameState);
 
-var _entities = require('../entities');
+var _entities6 = require('../entities');
 
 var _predicates = require('../predicates');
 
@@ -27309,27 +27350,27 @@ var _physics = require('../physics');
 var _utils = require('../utils');
 
 var abs = Math.abs;
+var round = Math.round;
 
-var GRAVITY = 0.5;
 //TODO: need runtime code to handle different platforms for now use based on dev-os
 //WINDOWS
-var BUTTONS = {
-  UP: 12,
-  RIGHT: 15,
-  DOWN: 13,
-  LEFT: 14,
-  A: 0,
-  B: 1
-};
-//OSX
 //const BUTTONS = {
-//  UP: 11,
-//  RIGHT: 14,
-//  DOWN: 12,
-//  LEFT: 13,
+//  UP: 12,
+//  RIGHT: 15,
+//  DOWN: 13,
+//  LEFT: 14,
 //  A: 0,
 //  B: 1
 //}
+//OSX
+var BUTTONS = {
+  UP: 11,
+  RIGHT: 14,
+  DOWN: 12,
+  LEFT: 13,
+  A: 0,
+  B: 1
+};
 
 function* checkWinningCondition(state) {
   while (true) {
@@ -27340,14 +27381,14 @@ function* checkWinningCondition(state) {
 function* updateAABBs(state) {
   while (true) {
     yield;
-    var entities = state.entities;
+    var _entities = state.entities;
     var _iteratorNormalCompletion = true;
     var _didIteratorError = false;
     var _iteratorError = undefined;
 
     try {
 
-      for (var _iterator = (0, _query.findWhere)((0, _predicates.has)('aabb'), entities)[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+      for (var _iterator = (0, _query.findWhere)((0, _predicates.has)('aabb'), _entities)[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
         var e = _step.value;
 
         e.aabb.position.x = e.worldTransform.tx;
@@ -27429,14 +27470,14 @@ function* getColliderPairs(entities) {
 function* checkCollisions(state) {
   while (true) {
     yield;
-    var entities = state.entities;
+    var _entities2 = state.entities;
     var _iteratorNormalCompletion4 = true;
     var _didIteratorError4 = false;
     var _iteratorError4 = undefined;
 
     try {
 
-      for (var _iterator4 = getColliderPairs(entities)[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+      for (var _iterator4 = getColliderPairs(_entities2)[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
         var _step4$value = _slicedToArray(_step4.value, 2);
 
         var e1 = _step4$value[0];
@@ -27464,7 +27505,7 @@ function* doPhysics(state) {
   while (true) {
     yield;
     var game = state.game;
-    var entities = state.entities;
+    var _entities3 = state.entities;
     var GROUND_Y = state.GROUND_Y;
     var dT = game.clock.dT;
     var _iteratorNormalCompletion5 = true;
@@ -27473,7 +27514,7 @@ function* doPhysics(state) {
 
     try {
 
-      for (var _iterator5 = (0, _query.findWhere)((0, _predicates.hasThree)('position', 'velocity', 'acceleration'), entities)[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+      for (var _iterator5 = (0, _query.findWhere)((0, _predicates.hasThree)('position', 'velocity', 'acceleration'), _entities3)[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
         var e = _step5.value;
 
         var newYVel = e.velocity.y + e.acceleration.y * dT;
@@ -27512,7 +27553,7 @@ function* killExpired(state) {
     yield;
 
     var game = state.game;
-    var entities = state.entities;
+    var _entities4 = state.entities;
     var thisTime = game.clock.thisTime;
     var _iteratorNormalCompletion6 = true;
     var _didIteratorError6 = false;
@@ -27520,7 +27561,7 @@ function* killExpired(state) {
 
     try {
 
-      for (var _iterator6 = (0, _query.findWhere)((0, _predicates.has)('deathTime'), entities)[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+      for (var _iterator6 = (0, _query.findWhere)((0, _predicates.has)('deathTime'), _entities4)[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
         var e = _step6.value;
 
         if (e.deathTime < thisTime) {
@@ -27548,10 +27589,11 @@ function* killExpired(state) {
 function* processInput(state) {
   while (true) {
     yield;
+    var game = state.game;
     var player = state.player;
-    var _state$game$clock = state.game.clock;
-    var dT = _state$game$clock.dT;
-    var thisTime = _state$game$clock.thisTime;
+    var _game$clock = game.clock;
+    var dT = _game$clock.dT;
+    var thisTime = _game$clock.thisTime;
 
     var controller = navigator.getGamepads()[0];
     var xVel = 0;
@@ -27578,7 +27620,7 @@ function* processInput(state) {
         var scalar = player.scale.x < 0 ? 1 : -1;
         var x = player.position.x + scalar * 20;
         var y = player.position.y;
-        var fb = new _entities.Fireball({ x: x, y: y }, thisTime);
+        var fb = new _entities6.Fireball({ x: x, y: y }, thisTime);
 
         fb.velocity.y = -1.2;
         fb.velocity.x = scalar * 1.2;
@@ -27630,17 +27672,64 @@ function* drawDebug(_ref) {
   }
 }
 
+function* runIntervals(state) {
+  while (true) {
+    yield;
+
+    var game = state.game;
+    var _entities5 = state.entities;
+    var thisTime = game.clock.thisTime;
+    var _iteratorNormalCompletion8 = true;
+    var _didIteratorError8 = false;
+    var _iteratorError8 = undefined;
+
+    try {
+
+      for (var _iterator8 = (0, _query.findWhere)((0, _predicates.has)('rate'), _entities5)[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+        var e = _step8.value;
+
+        if (round(thisTime) % e.rate === 0) e.fn(e);
+      }
+    } catch (err) {
+      _didIteratorError8 = true;
+      _iteratorError8 = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion8 && _iterator8['return']) {
+          _iterator8['return']();
+        }
+      } finally {
+        if (_didIteratorError8) {
+          throw _iteratorError8;
+        }
+      }
+    }
+  }
+}
+
 function Main() {
   var tasks = [
   //printDebug(this),
-  processInput(this), doPhysics(this), updateAABBs(this), checkCollisions(this), killExpired(this), checkWinningCondition(this)];
+  processInput(this), runIntervals(this), doPhysics(this), updateAABBs(this), checkCollisions(this), killExpired(this), checkWinningCondition(this)];
 
   //drawDebug(this)
   var ui = new _pixiJs2['default'].Container();
   var fg = new _pixiJs2['default'].Container();
   var bg = new _pixiJs2['default'].Container();
-  var m = new _entities.Monster({ x: 100, y: 200 });
-  var entities = [m];
+  var m = new _entities6.Monster({ x: 100, y: 200 });
+  var self = this;
+  var spawnEnemy = function spawnEnemy(e) {
+    var enemy = new _entities6.Enemy({ x: e.position.x, y: e.position.y }, self.game.clock.thisTime);
+
+    enemy.velocity.x = e.spawnVelocity.x;
+    enemy.velocity.y = e.spawnVelocity.y;
+    entities.push(enemy);
+    fg.addChild(enemy);
+  };
+  var spawn1 = new _entities6.Spawn(spawnEnemy, 10, { x: 10, y: 10 }, 1, { x: 0, y: 0 });
+  var spawn2 = new _entities6.Spawn(spawnEnemy, 3, { x: 15, y: 0 }, 5, { x: 0, y: 100 });
+  var spawn3 = new _entities6.Spawn(spawnEnemy, 16, { x: 10, y: -30 }, 12, { x: 0, y: 200 });
+  var entities = [m, spawn1, spawn2, spawn3];
   var debug = new _pixiJs2['default'].Graphics();
 
   //setup ui
@@ -27649,7 +27738,9 @@ function Main() {
 
   //setup fg
   fg.zPosition = 0;
-  fg.addChild(m);
+  fg.addChild(m, spawn1);
+  fg.addChild(m, spawn2);
+  fg.addChild(m, spawn3);
 
   //setup bg
   bg.zPosition = -10;
@@ -27678,7 +27769,6 @@ Object.defineProperty(exports, '__esModule', {
 });
 exports.runTasksForState = runTasksForState;
 exports.runTasks = runTasks;
-exports.tickClock = tickClock;
 
 function* runTasksForState(game) {
   while (true) {
@@ -27695,15 +27785,6 @@ function runTasks(tasks) {
     var run = task.next();
 
     if (run.done) tasks.splice(i, 1);else i++;
-  }
-}
-
-function* tickClock(clock, startTime) {
-  while (true) {
-    yield;
-    clock.lastTime = clock.thisTime;
-    clock.thisTime = Date.now() - startTime;
-    clock.dT = clock.thisTime - clock.lastTime;
   }
 }
 
@@ -27753,8 +27834,6 @@ var _Clock = require('./Clock');
 
 var _Clock2 = _interopRequireDefault(_Clock);
 
-var _tasks = require('./tasks');
-
 var _core = require('./core');
 
 var _World = require('./World');
@@ -27773,22 +27852,21 @@ var _statesGameOver = require('./states/GameOver');
 
 var _statesGameOver2 = _interopRequireDefault(_statesGameOver);
 
+var TICK_RATE = 33;
 var world = new _World2['default'](640, 480);
 var renderer = new _pixiJs2['default'].WebGLRenderer(world.width, world.height);
-var clock = new _Clock2['default']();
+var clock = new _Clock2['default'](Date.now(), TICK_RATE);
 var intro = new _statesIntro2['default']();
 var main = new _statesMain2['default']();
 var gameOver = new _statesGameOver2['default']();
 var tasks = [];
 var game = new _core.Game(clock, [intro, main, gameOver], tasks);
 
-game.tasks.push((0, _tasks.tickClock)(game.clock, Date.now()));
-game.tasks.push((0, _tasks.runTasksForState)(game));
 game.state = main;
 document.body.appendChild(renderer.view);
 setInterval(function () {
   return (0, _core.update)(game);
-}, 33);
+}, TICK_RATE);
 (0, _core.render)(renderer, game);
 
-},{"./Clock":131,"./World":133,"./core":134,"./states/GameOver":139,"./states/Intro":140,"./states/Main":141,"./tasks":142,"pixi.js":113}]},{},[144]);
+},{"./Clock":131,"./World":133,"./core":134,"./states/GameOver":139,"./states/Intro":140,"./states/Main":141,"pixi.js":113}]},{},[144]);

@@ -19,11 +19,3 @@ export function runTasks (tasks) {
   }
 }
 
-export function * tickClock (clock, startTime) {
-  while (true) {
-    yield 
-    clock.lastTime = clock.thisTime
-    clock.thisTime = Date.now() - startTime
-    clock.dT = clock.thisTime - clock.lastTime
-  }
-}

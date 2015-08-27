@@ -4,16 +4,19 @@ import {Sprite, Texture} from 'pixi.js'
 import {AABB} from './physics'
 import {v4 as UUID} from 'node-uuid'
 
-const GRAVITY = 0.00981
+const GRAVITY = 6
 
 class CoreSprite extends Sprite {
-  constructor (fileName) {
+  constructor (fileName, position) {
     super(new Texture.fromImage(fileName))
 
     this.id = UUID()
     this.anchor.x = 0.5
     this.anchor.y = 0.5
     this.aabb = new AABB({x: 0, y: 0}, {x: 0, y: 0})
+    this.position = position 
+    this.velocity = {x: 0, y: 0}
+    this.acceleration = {x: 0, y: GRAVITY}
 
     Object.defineProperty(this, 'direction', {
       get () { 
@@ -24,11 +27,8 @@ class CoreSprite extends Sprite {
 }
 
 export class Monster extends CoreSprite {
-  constructor (pos) {
-    super('bowser.gif')
-    this.position = pos
-    this.velocity = {x: 0, y: 0}
-    this.acceleration = {x: 0, y: GRAVITY}
+  constructor (position) {
+    super('bowser.gif', position)
     this.walkSpeed = 0.5
     this.fireballTimeout = 300
     this.nextFireTime = 0
@@ -37,14 +37,33 @@ export class Monster extends CoreSprite {
 }
 
 export class Fireball extends CoreSprite {
-  constructor (pos, spawnTime) {
-    super('fireball.gif') 
-    this.position = pos
-    this.velocity = {x: 0, y: 0}
-    this.acceleration = {x: 0, y: GRAVITY}
+  constructor (position, spawnTime) {
+    super('fireball.gif', position) 
     this.scale.x = 0.5
     this.scale.y = 0.5
     this.deathTime = spawnTime + 2000
     this.elasticity = 1.2
+  }
+}
+
+export class Enemy extends CoreSprite {
+  constructor (position, spawnTime) {
+    super('fireball.gif', position)
+    this.scale.x = 0.4
+    this.scale.y = 0.4
+    this.deathTime = spawnTime + 100
+    this.elasticity = 1.0
+  }
+}
+
+export class Spawn extends PIXI.Container {
+  constructor (fn, rate, spawnVelocity, variance, position) {
+    super()
+    this.fn = fn
+    this.rate = rate
+    this.lastEvent = 0
+    this.position = position
+    this.spawnVelocity = spawnVelocity
+    this.variance = variance
   }
 }
