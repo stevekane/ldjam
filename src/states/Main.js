@@ -2,32 +2,32 @@
 
 import Pixi from 'pixi.js'
 import GameState from '../GameState'
-import {Monster, Fireball} from '../entities'
+import {Monster, Fireball, Enemy, Spawn} from '../entities'
 import {has, whereProp, hasThree} from '../predicates'
 import {findWhere} from '../query'
 import {doesCollide, resolveCollision} from '../physics'
 import {remove, propLessThan, both} from '../utils'
 
-const {abs} = Math
+const {abs, round} = Math
 //TODO: need runtime code to handle different platforms for now use based on dev-os
 //WINDOWS
-const BUTTONS = {
-  UP: 12,
-  RIGHT: 15,
-  DOWN: 13,
-  LEFT: 14,
-  A: 0,
-  B: 1
-}
-//OSX
 //const BUTTONS = {
-//  UP: 11,
-//  RIGHT: 14,
-//  DOWN: 12,
-//  LEFT: 13,
+//  UP: 12,
+//  RIGHT: 15,
+//  DOWN: 13,
+//  LEFT: 14,
 //  A: 0,
 //  B: 1
 //}
+//OSX
+const BUTTONS = {
+  UP: 11,
+  RIGHT: 14,
+  DOWN: 12,
+  LEFT: 13,
+  A: 0,
+  B: 1
+}
 
 function * checkWinningCondition (state) {
   while (true) {
@@ -115,8 +115,8 @@ function * killExpired (state) {
 function * processInput (state) {
   while (true) {
     yield
-    let {player} = state
-    let {dT, thisTime} = state.game.clock
+    let {game, player} = state
+    let {dT, thisTime} = game.clock
     let controller = navigator.getGamepads()[0]
     var xVel = 0
 
@@ -175,10 +175,24 @@ function *drawDebug ({entities, debug}) {
   }
 }
 
+function * runIntervals (state) {
+  while (true) {
+    yield 
+
+    let {game, entities} = state
+    let {thisTime} = game.clock
+
+    for (let e of findWhere(has('rate'), entities)) {
+      if (round(thisTime) % e.rate === 0) e.fn(e)
+    }
+  }
+}
+
 export default function Main () {
   let tasks = [
     //printDebug(this),
     processInput(this),
+    runIntervals(this),
     doPhysics(this),
     updateAABBs(this),
     checkCollisions(this),
@@ -190,8 +204,21 @@ export default function Main () {
   let fg = new Pixi.Container
   let bg = new Pixi.Container
   let m = new Monster({x: 100, y: 200})
-  let entities = [m]
-  let debug = new Pixi.Graphics()
+  let self = this
+  let spawnEnemy = function (e) {
+    let enemy = new Enemy({x: e.position.x, y: e.position.y}, 
+                          self.game.clock.thisTime)  
+
+    enemy.velocity.x = e.spawnVelocity.x
+    enemy.velocity.y = e.spawnVelocity.y
+    entities.push(enemy)
+    fg.addChild(enemy)
+  }
+  let spawn1 = new Spawn(spawnEnemy, 10, {x: 10, y: 10}, 1, {x: 0, y: 0})
+  let spawn2 = new Spawn(spawnEnemy, 3, {x: 15, y: 0}, 5, {x: 0, y: 100})
+  let spawn3 = new Spawn(spawnEnemy, 16, {x: 10, y: -30}, 12, {x: 0, y: 200})
+  let entities = [m, spawn1, spawn2, spawn3]
+  let debug = new Pixi.Graphics
 
   //setup ui
   ui.zPosition = 10
@@ -199,7 +226,9 @@ export default function Main () {
 
   //setup fg
   fg.zPosition = 0
-  fg.addChild(m)
+  fg.addChild(m, spawn1)
+  fg.addChild(m, spawn2)
+  fg.addChild(m, spawn3)
 
   //setup bg
   bg.zPosition = -10

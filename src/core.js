@@ -1,16 +1,19 @@
 'use strict'
 
-import {runTasks} from './tasks'
+import {runTasks, runTasksForState} from './tasks'
 
-export function Game (clock, states, tasks) {
+export function Game (clock, states) {
   this.clock = clock
   this.states = states
   this.state = states[0]
-  this.tasks = tasks
+  this.tasks = [
+    runTasksForState(this) 
+  ]
   for (let state of states) state.game = this
 }
 
 export function update (game) {
+  game.clock.tick()
   runTasks(game.tasks)
 }
 
