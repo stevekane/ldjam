@@ -4,7 +4,6 @@
   "description": "Ludum Dare gamejam entry",
   "main": "server.js",
   "scripts": {
-    "test": "node test",
     "watch": "watchify -t [babelify --blacklist regenerator] -d -o public/game.js src/main.js"
   },
   "repository": {

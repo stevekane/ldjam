@@ -2,32 +2,36 @@
 
 import Pixi from 'pixi.js'
 import GameState from '../GameState'
+import World from '../World'
 import {Monster, Fireball, Enemy, Spawn} from '../entities'
 import {has, whereProp, hasThree} from '../predicates'
 import {findWhere} from '../query'
 import {doesCollide, resolveCollision} from '../physics'
-import {remove, propLessThan, both} from '../utils'
+import {remove, propLessThan, both, either, instanceOf, all} from '../utils'
 
+const isPlayer = instanceOf(Monster)
+const isFireball = instanceOf(Fireball)
+const isEnemy = instanceOf(Enemy)
 const {abs, round} = Math
 //TODO: need runtime code to handle different platforms for now use based on dev-os
 //WINDOWS
-//const BUTTONS = {
-//  UP: 12,
-//  RIGHT: 15,
-//  DOWN: 13,
-//  LEFT: 14,
-//  A: 0,
-//  B: 1
-//}
-//OSX
 const BUTTONS = {
-  UP: 11,
-  RIGHT: 14,
-  DOWN: 12,
-  LEFT: 13,
+  UP: 12,
+  RIGHT: 15,
+  DOWN: 13,
+  LEFT: 14,
   A: 0,
   B: 1
 }
+//OSX
+//const BUTTONS = {
+//  UP: 11,
+//  RIGHT: 14,
+//  DOWN: 12,
+//  LEFT: 13,
+//  A: 0,
+//  B: 1
+//}
 
 function * checkWinningCondition (state) {
   while (true) {
@@ -36,11 +40,13 @@ function * checkWinningCondition (state) {
 }
 
 function * updateAABBs (state) {
+  const query = has('aabb')
+
   while (true) {
     yield 
     let {entities} = state
 
-    for (let e of findWhere(has('aabb'), entities)) {
+    for (let e of findWhere(query, entities)) {
       e.aabb.position.x = e.worldTransform.tx 
       e.aabb.position.y = e.worldTransform.ty
       e.aabb.size.x = e.width
@@ -61,33 +67,74 @@ function * getColliderPairs (entities) {
   }
 }
 
+function handlePlayerEnemy (e1, e2, state) {
+  let player = e1 instanceof Monster ? e1 : e2
+  let enemy = e1 instanceof Monster ? e2 : e1
+
+  if (!enemy.dead) state.tasks.push(killEnemy(enemy, state))
+}
+
+//TODO: this should probably take a query for the target?
+function * killEnemy (enemy, state) {
+  const startTime = state.game.clock.thisTime
+
+  enemy.dead = true 
+  enemy.alpha = 0.5
+  enemy.doPhysics = false
+
+  while (startTime + 10 > state.game.clock.thisTime) {
+    yield 
+  }
+
+  const midTime = state.game.clock.thisTime
+
+  enemy.velocity.x = 0
+  enemy.velocity.y = -40
+  enemy.doPhysics = true
+
+  while (midTime + 5 > state.game.clock.thisTime) {
+    enemy.scale.x += 0.1
+    enemy.scale.y += 0.1
+    yield
+  }
+}
+
+function handleFireballHitEnemy (e1, e2, state) {
+  let fireball = e1 instanceof Fireball ? e1 : e2
+  let enemy = e1 instanceof Fireball ? e2 : e1
+}
+
 function * checkCollisions (state) {
   while (true) {
     yield
     let {entities} = state 
 
     for (let [e1, e2] of getColliderPairs(entities)) {
-      //handleCollision(e1, e2)
+      if      (either(isPlayer, isEnemy, e1, e2))   handlePlayerEnemy(e1, e2, state)
+      else if (either(isFireball, isEnemy, e1, e2)) handleFireballHitEnemy(e1, e2, state)
+      else    {}
     }
   }
 }
 
 function * doPhysics (state) {
+  const query = all(has('position'), has('velocity'), has('acceleration'), whereProp('doPhysics', true))
+
   while (true) {
     yield
-    let {game, entities, GROUND_Y} = state 
+    let {game, entities, world} = state 
     let {dT} = game.clock
 
-    for (let e of findWhere(hasThree('position', 'velocity', 'acceleration'), entities)) {
+    for (let e of findWhere(query, entities)) {
       let newYVel = e.velocity.y + e.acceleration.y * dT
       let newYPos = e.position.y + newYVel * dT
-      let groundPenetrationDepth = (newYPos + e.height / 2) - GROUND_Y
+      let groundPenetrationDepth = (newYPos + e.height / 2) - world.y
 
       e.velocity.x += e.acceleration.x * dT 
       e.position.x += e.velocity.x * dT 
-      if (groundPenetrationDepth > 0) {
+      if (groundPenetrationDepth > 0 && !e.dead) {
         e.velocity.y = -1 * e.elasticity * e.velocity.y
-        e.position.y = GROUND_Y - (e.height / 2)
+        e.position.y = world.y - (e.height / 2)
       } else {
         e.velocity.y = newYVel
         e.position.y = newYPos
@@ -115,7 +162,7 @@ function * killExpired (state) {
 function * processInput (state) {
   while (true) {
     yield
-    let {game, player} = state
+    let {game, player, world} = state
     let {dT, thisTime} = game.clock
     let controller = navigator.getGamepads()[0]
     var xVel = 0
@@ -144,15 +191,17 @@ function * processInput (state) {
         let y = player.position.y
         let fb = new Fireball({x, y}, thisTime)
 
-        fb.velocity.y = -1.2
-        fb.velocity.x = scalar * 1.2
+        fb.velocity.y = -15
+        fb.velocity.x = scalar * 20
         player.nextFireTime = thisTime + player.fireballTimeout
         state.entities.push(fb)
         state.fg.addChild(fb)
       }
     }
     if (controller.buttons[BUTTONS.B].pressed) {
-      player.velocity.y -= 0.7
+      if (player.position.y >= world.y - (player.height / 2)) {
+        player.velocity.y -= player.jumpVelocity
+      }
     }
   }
 }
@@ -172,6 +221,14 @@ function *drawDebug ({entities, debug}) {
         e.aabb.y2 - e.aabb.y1
       )
     }
+  }
+}
+
+function * printDebug ({tasks}) {
+  while (true) {
+    yield
+
+    console.log(tasks.length) 
   }
 }
 
@@ -214,9 +271,9 @@ export default function Main () {
     entities.push(enemy)
     fg.addChild(enemy)
   }
-  let spawn1 = new Spawn(spawnEnemy, 10, {x: 10, y: 10}, 1, {x: 0, y: 0})
-  let spawn2 = new Spawn(spawnEnemy, 3, {x: 15, y: 0}, 5, {x: 0, y: 100})
-  let spawn3 = new Spawn(spawnEnemy, 16, {x: 10, y: -30}, 12, {x: 0, y: 200})
+  let spawn1 = new Spawn(spawnEnemy, 100, {x: 10, y: 10}, 1, {x: 0, y: 0})
+  let spawn2 = new Spawn(spawnEnemy, 300, {x: 15, y: 0}, 5, {x: 0, y: 100})
+  let spawn3 = new Spawn(spawnEnemy, 150, {x: 10, y: -30}, 12, {x: 0, y: 200})
   let entities = [m, spawn1, spawn2, spawn3]
   let debug = new Pixi.Graphics
 
@@ -234,6 +291,7 @@ export default function Main () {
   bg.zPosition = -10
 
   GameState.call(this, 'main', tasks)
+  this.world = new World(640, 480)
   this.entities = entities
   this.ui = ui
   this.fg = fg
@@ -244,6 +302,5 @@ export default function Main () {
   this.stage.addChild(ui)
   this.player = m
   this.paused = false
-  this.GROUND_Y = 400
 }
 

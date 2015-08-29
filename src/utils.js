@@ -21,3 +21,22 @@ export function both (fn1, fn2) {
     return fn1(e) && fn2(e) 
   }
 }
+
+export function either (f1, f2, e1, e2) {
+  return (f1(e1) && f2(e2)) || (f1(e2) && f2(e1))
+}
+
+export function all (...fns) {
+  return function (e) {
+    for (let fn of fns) {
+      if (!fn(e)) return false
+    }
+    return true
+  }
+}
+
+export function instanceOf (Ctor) {
+  return function (e) {
+    return e instanceof Ctor 
+  }
+}

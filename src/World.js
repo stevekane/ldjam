@@ -1,4 +1,4 @@
-export default function World (width, height) {
-  this.width = width
-  this.height = height
+export default function World (x, y) {
+  this.x = x
+  this.y = y
 }

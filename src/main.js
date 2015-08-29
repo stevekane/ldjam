@@ -10,7 +10,7 @@ import GameOver from './states/GameOver'
 
 const TICK_RATE = 33
 const world = new World(640, 480)
-const renderer = new Pixi.WebGLRenderer(world.width, world.height)
+const renderer = new Pixi.WebGLRenderer(world.x, world.y)
 const clock = new Clock(Date.now(), TICK_RATE)
 const intro = new Intro
 const main = new Main
