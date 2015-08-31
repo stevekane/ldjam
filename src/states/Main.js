@@ -271,9 +271,9 @@ export default function Main () {
     entities.push(enemy)
     fg.addChild(enemy)
   }
-  let spawn1 = new Spawn(spawnEnemy, 100, {x: 10, y: 10}, 1, {x: 0, y: 0})
-  let spawn2 = new Spawn(spawnEnemy, 300, {x: 15, y: 0}, 5, {x: 0, y: 100})
-  let spawn3 = new Spawn(spawnEnemy, 150, {x: 10, y: -30}, 12, {x: 0, y: 200})
+  let spawn1 = new Spawn(spawnEnemy, 10, {x: 10, y: 10}, 1, {x: 0, y: 0})
+  let spawn2 = new Spawn(spawnEnemy, 30, {x: 15, y: 0}, 5, {x: 0, y: 100})
+  let spawn3 = new Spawn(spawnEnemy, 15, {x: 10, y: -30}, 12, {x: 0, y: 200})
   let entities = [m, spawn1, spawn2, spawn3]
   let debug = new Pixi.Graphics
 
