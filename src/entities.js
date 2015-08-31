@@ -18,6 +18,7 @@ class CoreSprite extends Sprite {
     this.velocity = {x: 0, y: 0}
     this.acceleration = {x: 0, y: GRAVITY}
     this.doPhysics = true
+    this.dead = false
 
     Object.defineProperty(this, 'direction', {
       get () { 

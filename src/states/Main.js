@@ -6,6 +6,7 @@ import World from '../World'
 import {Monster, Fireball, Enemy, Spawn} from '../entities'
 import {has, whereProp, hasThree} from '../predicates'
 import {findWhere} from '../query'
+import {runTasks} from '../tasks'
 import {doesCollide, resolveCollision} from '../physics'
 import {remove, propLessThan, both, either, instanceOf, all} from '../utils'
 
@@ -56,10 +57,10 @@ function * updateAABBs (state) {
 }
 
 function * getColliderPairs (entities) {
-  let query1 = has('aabb')
+  let query1 = both(has('aabb'), whereProp('dead', false))
 
   for (let e1 of findWhere(query1, entities)) {
-    let query2 = both(has('aabb'), propLessThan('id', e1))
+    let query2 = both(query1, propLessThan('id', e1))
 
     for (let e2 of findWhere(query2, entities)) {
       if (doesCollide(e1.aabb, e2.aabb)) yield([e1, e2])
@@ -67,53 +68,89 @@ function * getColliderPairs (entities) {
   }
 }
 
-function handlePlayerEnemy (e1, e2, state) {
-  let player = e1 instanceof Monster ? e1 : e2
-  let enemy = e1 instanceof Monster ? e2 : e1
+function * killEnemy (enemy) {
+  let tasks = [
+    spin(30, enemy),
+    Sequence(freeze(enemy), unfreeze(enemy), growFor(10, enemy))
+  ] 
 
-  if (!enemy.dead) state.tasks.push(killEnemy(enemy, state))
-}
-
-//TODO: this should probably take a query for the target?
-function * killEnemy (enemy, state) {
-  const startTime = state.game.clock.thisTime
-
-  enemy.dead = true 
-  enemy.alpha = 0.5
-  enemy.doPhysics = false
-
-  while (startTime + 10 > state.game.clock.thisTime) {
-    yield 
-  }
-
-  const midTime = state.game.clock.thisTime
-
-  enemy.velocity.x = 0
-  enemy.velocity.y = -40
-  enemy.doPhysics = true
-
-  while (midTime + 5 > state.game.clock.thisTime) {
-    enemy.scale.x += 0.1
-    enemy.scale.y += 0.1
+  yield
+  while (tasks.length > 0) {
+    runTasks(tasks)
     yield
   }
 }
 
-function handleFireballHitEnemy (e1, e2, state) {
-  let fireball = e1 instanceof Fireball ? e1 : e2
-  let enemy = e1 instanceof Fireball ? e2 : e1
+function handlePlayerEnemy (e1, e2, collisionTasks) {
+  let enemy = e1 instanceof Monster ? e2 : e1
+
+  collisionTasks.push(killEnemy(enemy))
+}
+
+function * wait (duration) {
+  yield
+  let timer = 0 
+
+  while (timer++ < duration) yield
+}
+
+function * spin (duration, entity) {
+  yield
+  let timer = 0
+
+  while (timer++ < duration) {
+    entity.rotation += 0.5
+    yield
+  }
+}
+
+function * Sequence (...taskList) {
+  yield
+
+  for (let task of taskList) {
+    while (!task.next().done) yield
+  }
+}
+
+function * freeze (enemy) {
+  yield
+
+  enemy.dead = true
+  enemy.alpha = 0.5
+  enemy.doPhysics = false 
+}
+
+function * growFor (duration, entity) {
+  yield
+
+  let timer = 0
+
+  while (timer++ < duration) {
+    entity.scale.x += 0.1 
+    entity.scale.y += 0.1
+    yield
+  }
+}
+
+function * unfreeze (entity) {
+  yield
+
+  entity.velocity.y = - 40
+  entity.velocity.x = 0
+  entity.doPhysics = true
 }
 
 function * checkCollisions (state) {
+  let tasks = []
+
   while (true) {
     yield
     let {entities} = state 
 
     for (let [e1, e2] of getColliderPairs(entities)) {
-      if      (either(isPlayer, isEnemy, e1, e2))   handlePlayerEnemy(e1, e2, state)
-      else if (either(isFireball, isEnemy, e1, e2)) handleFireballHitEnemy(e1, e2, state)
-      else    {}
+      if      (either(isPlayer, isEnemy, e1, e2)) handlePlayerEnemy(e1, e2, tasks)
     }
+    runTasks(tasks) 
   }
 }
 
@@ -122,6 +159,7 @@ function * doPhysics (state) {
 
   while (true) {
     yield
+
     let {game, entities, world} = state 
     let {dT} = game.clock
 
@@ -162,6 +200,7 @@ function * killExpired (state) {
 function * processInput (state) {
   while (true) {
     yield
+
     let {game, player, world} = state
     let {dT, thisTime} = game.clock
     let controller = navigator.getGamepads()[0]
@@ -271,9 +310,9 @@ export default function Main () {
     entities.push(enemy)
     fg.addChild(enemy)
   }
-  let spawn1 = new Spawn(spawnEnemy, 10, {x: 10, y: 10}, 1, {x: 0, y: 0})
-  let spawn2 = new Spawn(spawnEnemy, 30, {x: 15, y: 0}, 5, {x: 0, y: 100})
-  let spawn3 = new Spawn(spawnEnemy, 15, {x: 10, y: -30}, 12, {x: 0, y: 200})
+  let spawn1 = new Spawn(spawnEnemy, 15, {x: 10, y: 10}, 1, {x: 0, y: 0})
+  let spawn2 = new Spawn(spawnEnemy, 3, {x: 15, y: 0}, 5, {x: 0, y: 100})
+  let spawn3 = new Spawn(spawnEnemy, 10, {x: 10, y: -30}, 12, {x: 0, y: 200})
   let entities = [m, spawn1, spawn2, spawn3]
   let debug = new Pixi.Graphics
 
