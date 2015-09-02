@@ -69,9 +69,17 @@ function * getColliderPairs (entities) {
 }
 
 function * killEnemy (enemy) {
+  function grow () {
+    enemy.scale.x += 0.1 
+    enemy.scale.y += 0.1 
+  }
   let tasks = [
     spin(30, enemy),
-    Sequence(freeze(enemy), unfreeze(enemy), growFor(10, enemy))
+    Sequence(
+      freeze(enemy), 
+      doFor(grow, 5), 
+      unfreeze(enemy), 
+      waitFor(10))
   ] 
 
   yield
@@ -87,12 +95,19 @@ function handlePlayerEnemy (e1, e2, collisionTasks) {
   collisionTasks.push(killEnemy(enemy))
 }
 
-function * wait (duration) {
+function * doFor (fn, duration) {
   yield
-  let timer = 0 
 
-  while (timer++ < duration) yield
+  let timer = 0
+
+  while (timer++ < duration) {
+    fn()
+    yield
+  }
 }
+
+const noop = () => {}
+const waitFor = doFor.bind(null, noop)
 
 function * spin (duration, entity) {
   yield
@@ -118,18 +133,6 @@ function * freeze (enemy) {
   enemy.dead = true
   enemy.alpha = 0.5
   enemy.doPhysics = false 
-}
-
-function * growFor (duration, entity) {
-  yield
-
-  let timer = 0
-
-  while (timer++ < duration) {
-    entity.scale.x += 0.1 
-    entity.scale.y += 0.1
-    yield
-  }
 }
 
 function * unfreeze (entity) {
@@ -310,9 +313,9 @@ export default function Main () {
     entities.push(enemy)
     fg.addChild(enemy)
   }
-  let spawn1 = new Spawn(spawnEnemy, 15, {x: 10, y: 10}, 1, {x: 0, y: 0})
-  let spawn2 = new Spawn(spawnEnemy, 3, {x: 15, y: 0}, 5, {x: 0, y: 100})
-  let spawn3 = new Spawn(spawnEnemy, 10, {x: 10, y: -30}, 12, {x: 0, y: 200})
+  let spawn1 = new Spawn(spawnEnemy, 150, {x: 10, y: 10}, 1, {x: 0, y: 0})
+  let spawn2 = new Spawn(spawnEnemy, 50, {x: 15, y: 0}, 5, {x: 0, y: 100})
+  let spawn3 = new Spawn(spawnEnemy, 100, {x: 10, y: -30}, 12, {x: 0, y: 200})
   let entities = [m, spawn1, spawn2, spawn3]
   let debug = new Pixi.Graphics
 
