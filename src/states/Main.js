@@ -6,7 +6,7 @@ import World from '../World'
 import {Monster, Fireball, Enemy, Spawn} from '../entities'
 import {has, whereProp, hasThree} from '../predicates'
 import {findWhere} from '../query'
-import {runTasks} from '../tasks'
+import {runTasks, withClock} from '../tasks'
 import {doesCollide, resolveCollision} from '../physics'
 import {remove, propLessThan, both, either, instanceOf, all} from '../utils'
 
@@ -35,7 +35,10 @@ const BUTTONS = {
 //}
 
 function * checkWinningCondition (state) {
+  const {game} = state
+
   while (true) {
+    if (state.player.dead) game.state = game.states[2]
     yield 
   }
 }
@@ -44,7 +47,6 @@ function * updateAABBs (state) {
   const query = has('aabb')
 
   while (true) {
-    yield 
     let {entities} = state
 
     for (let e of findWhere(query, entities)) {
@@ -53,6 +55,7 @@ function * updateAABBs (state) {
       e.aabb.size.x = e.width
       e.aabb.size.y = e.height
     }
+    yield 
   }
 }
 
@@ -68,76 +71,56 @@ function * getColliderPairs (entities) {
   }
 }
 
-function * killEnemy (enemy) {
+function * killSequence (state, entity) {
   function grow () {
-    enemy.scale.x += 0.1 
-    enemy.scale.y += 0.1 
+    entity.scale.x += 0.1 
+    entity.scale.y += 0.1 
+  }
+  function spin () {
+    entity.rotation += 0.5 
   }
   let tasks = [
-    spin(30, enemy),
+    doFor(spin, 15),
     Sequence(
-      freeze(enemy), 
+      freeze(entity), 
       doFor(grow, 5), 
-      unfreeze(enemy), 
-      waitFor(10))
+      unfreeze(entity), 
+      waitFor(10),
+      kill(entity))
   ] 
 
-  yield
   while (tasks.length > 0) {
     runTasks(tasks)
     yield
   }
 }
 
-function handlePlayerEnemy (e1, e2, collisionTasks) {
-  let enemy = e1 instanceof Monster ? e2 : e1
-
-  collisionTasks.push(killEnemy(enemy))
-}
-
 function * doFor (fn, duration) {
-  yield
-
   let timer = 0
 
-  while (timer++ < duration) {
-    fn()
-    yield
-  }
+  while (timer++ < duration) yield fn()
 }
 
 const noop = () => {}
 const waitFor = doFor.bind(null, noop)
 
-function * spin (duration, entity) {
-  yield
-  let timer = 0
-
-  while (timer++ < duration) {
-    entity.rotation += 0.5
-    yield
-  }
-}
-
 function * Sequence (...taskList) {
-  yield
-
   for (let task of taskList) {
     while (!task.next().done) yield
   }
 }
 
-function * freeze (enemy) {
-  yield
+function * kill (entity) {
+  entity.dead = true
+}
 
-  enemy.dead = true
-  enemy.alpha = 0.5
-  enemy.doPhysics = false 
+function * freeze (entity) {
+  entity.dead = true
+  entity.alpha = 0.5
+  entity.doPhysics = false 
 }
 
 function * unfreeze (entity) {
-  yield
-
   entity.velocity.y = - 40
   entity.velocity.x = 0
   entity.doPhysics = true
@@ -147,13 +130,16 @@ function * checkCollisions (state) {
   let tasks = []
 
   while (true) {
-    yield
     let {entities} = state 
 
     for (let [e1, e2] of getColliderPairs(entities)) {
-      if      (either(isPlayer, isEnemy, e1, e2)) handlePlayerEnemy(e1, e2, tasks)
+      if (either(isPlayer, isEnemy, e1, e2)) {
+        tasks.push(killSequence(state, e1))
+        tasks.push(killSequence(state, e2))
+      }
     }
     runTasks(tasks) 
+    yield
   }
 }
 
@@ -161,8 +147,6 @@ function * doPhysics (state) {
   const query = all(has('position'), has('velocity'), has('acceleration'), whereProp('doPhysics', true))
 
   while (true) {
-    yield
-
     let {game, entities, world} = state 
     let {dT} = game.clock
 
@@ -181,13 +165,12 @@ function * doPhysics (state) {
         e.position.y = newYPos
       }
     }
+    yield
   }
 }
 
 function * killExpired (state) {
   while (true) {
-    yield
-
     let {game, entities} = state 
     let {thisTime} = game.clock
 
@@ -197,13 +180,12 @@ function * killExpired (state) {
         state.fg.removeChild(e)
       }
     }
+    yield
   }
 }
 
 function * processInput (state) {
   while (true) {
-    yield
-
     let {game, player, world} = state
     let {dT, thisTime} = game.clock
     let controller = navigator.getGamepads()[0]
@@ -245,13 +227,12 @@ function * processInput (state) {
         player.velocity.y -= player.jumpVelocity
       }
     }
+    yield
   }
 }
 
 function *drawDebug ({entities, debug}) {
   while (true) {
-    yield 
-
     debug.clear()
     debug.lineStyle(2, 0x0000FF, 0.50)
     debug.beginFill(0xFF700B, 0.50)
@@ -263,60 +244,56 @@ function *drawDebug ({entities, debug}) {
         e.aabb.y2 - e.aabb.y1
       )
     }
+    yield 
   }
 }
 
 function * printDebug ({tasks}) {
   while (true) {
-    yield
-
     console.log(tasks.length) 
-  }
-}
-
-function * runIntervals (state) {
-  while (true) {
     yield 
-
-    let {game, entities} = state
-    let {thisTime} = game.clock
-
-    for (let e of findWhere(has('rate'), entities)) {
-      if (round(thisTime) % e.rate === 0) e.fn(e)
-    }
   }
 }
 
-export default function Main () {
+function * spawnEnemy (state, position) {
+  while (true) {
+    let thisTime = state.game.clock.thisTime
+    let enemy = new Enemy({
+      x: 200 * Math.sin(thisTime), 
+      y: 200 * Math.cos(thisTime)
+    }, thisTime)
+
+    enemy.velocity.x = 2
+    enemy.velocity.y = 0
+    state.fg.addChild(enemy)
+    state.entities.push(enemy)
+    yield 
+  }
+}
+
+function everyNth (n) {
+  return function every (clock) {
+    return (clock.thisTime | 0) % n === 0
+  }
+}
+
+export default function Main (clock) {
   let tasks = [
     //printDebug(this),
     processInput(this),
-    runIntervals(this),
+    withClock(everyNth(15), clock, spawnEnemy(this, {x: 0, y: 0})),
     doPhysics(this),
     updateAABBs(this),
     checkCollisions(this),
-    killExpired(this),
-    checkWinningCondition(this),
+    withClock(everyNth(10), clock, killExpired(this)),
+    withClock(everyNth(30), clock, checkWinningCondition(this)),
     //drawDebug(this)
   ]
   let ui = new Pixi.Container
   let fg = new Pixi.Container
   let bg = new Pixi.Container
-  let m = new Monster({x: 100, y: 200})
-  let self = this
-  let spawnEnemy = function (e) {
-    let enemy = new Enemy({x: e.position.x, y: e.position.y}, 
-                          self.game.clock.thisTime)  
-
-    enemy.velocity.x = e.spawnVelocity.x
-    enemy.velocity.y = e.spawnVelocity.y
-    entities.push(enemy)
-    fg.addChild(enemy)
-  }
-  let spawn1 = new Spawn(spawnEnemy, 150, {x: 10, y: 10}, 1, {x: 0, y: 0})
-  let spawn2 = new Spawn(spawnEnemy, 50, {x: 15, y: 0}, 5, {x: 0, y: 100})
-  let spawn3 = new Spawn(spawnEnemy, 100, {x: 10, y: -30}, 12, {x: 0, y: 200})
-  let entities = [m, spawn1, spawn2, spawn3]
+  let m = new Monster({x: 500, y: 200})
+  let entities = [m]
   let debug = new Pixi.Graphics
 
   //setup ui
@@ -325,9 +302,7 @@ export default function Main () {
 
   //setup fg
   fg.zPosition = 0
-  fg.addChild(m, spawn1)
-  fg.addChild(m, spawn2)
-  fg.addChild(m, spawn3)
+  fg.addChild(m)
 
   //setup bg
   bg.zPosition = -10
@@ -345,4 +320,3 @@ export default function Main () {
   this.player = m
   this.paused = false
 }
-

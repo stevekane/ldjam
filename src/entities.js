@@ -54,18 +54,7 @@ export class Enemy extends CoreSprite {
     super('fireball.gif', position)
     this.scale.x = 0.4
     this.scale.y = 0.4
-    this.deathTime = spawnTime + 300
+    this.deathTime = spawnTime + 120
     this.elasticity = 1.0
-  }
-}
-
-export class Spawn extends PIXI.Container {
-  constructor (fn, rate, spawnVelocity, variance, position) {
-    super()
-    this.fn = fn
-    this.rate = rate
-    this.position = position
-    this.spawnVelocity = spawnVelocity
-    this.variance = variance
   }
 }

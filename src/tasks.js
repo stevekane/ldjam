@@ -2,9 +2,13 @@
 
 export function * runTasksForState (game) {
   while (true) {
-    yield
     runTasks(game.state.tasks)
+    yield
   }
+}
+
+export function * withClock (fn, clock, task) {
+  while (!fn(clock) || !task.next().done) yield
 }
 
 export function runTasks (tasks) {
@@ -18,4 +22,3 @@ export function runTasks (tasks) {
     else          i++
   }
 }
-
