@@ -60,7 +60,7 @@ function * updateAABBs (state) {
 }
 
 function * getColliderPairs (entities) {
-  let query1 = both(has('aabb'), whereProp('dead', false))
+  let query1 = both(has('aabb'), whereProp('dying', false))
 
   for (let e1 of findWhere(query1, entities)) {
     let query2 = both(query1, propLessThan('id', e1))
@@ -72,21 +72,19 @@ function * getColliderPairs (entities) {
 }
 
 function * killSequence (state, entity) {
-  function grow () {
-    entity.scale.x += 0.1 
-    entity.scale.y += 0.1 
-  }
-  function spin () {
-    entity.rotation += 0.5 
+  function flyOff () {
+    entity.scale.x += 0.01
+    entity.scale.y += 0.01
+    entity.rotation += 0.5
   }
   let tasks = [
-    doFor(spin, 15),
     Sequence(
       freeze(entity), 
-      doFor(grow, 5), 
+      waitFor(15), 
       unfreeze(entity), 
-      waitFor(10),
-      kill(entity))
+      doFor(flyOff, 30), 
+      kill(entity)
+    )
   ] 
 
   while (tasks.length > 0) {
@@ -115,7 +113,7 @@ function * kill (entity) {
 }
 
 function * freeze (entity) {
-  entity.dead = true
+  entity.dying = true
   entity.alpha = 0.5
   entity.doPhysics = false 
 }
@@ -157,7 +155,7 @@ function * doPhysics (state) {
 
       e.velocity.x += e.acceleration.x * dT 
       e.position.x += e.velocity.x * dT 
-      if (groundPenetrationDepth > 0 && !e.dead) {
+      if (groundPenetrationDepth > 0 && !e.dying) {
         e.velocity.y = -1 * e.elasticity * e.velocity.y
         e.position.y = world.y - (e.height / 2)
       } else {
@@ -190,11 +188,6 @@ function * processInput (state) {
     let {dT, thisTime} = game.clock
     let controller = navigator.getGamepads()[0]
     var xVel = 0
-
-    if (!controller) {
-      state.paused = true
-      continue
-    }
 
     //MOVEMENT
     if (controller.buttons[BUTTONS.RIGHT].pressed) {
@@ -248,13 +241,6 @@ function *drawDebug ({entities, debug}) {
   }
 }
 
-function * printDebug ({tasks}) {
-  while (true) {
-    console.log(tasks.length) 
-    yield 
-  }
-}
-
 function * spawnEnemy (state, position) {
   while (true) {
     let thisTime = state.game.clock.thisTime
@@ -279,7 +265,6 @@ function everyNth (n) {
 
 export default function Main (clock) {
   let tasks = [
-    //printDebug(this),
     processInput(this),
     withClock(everyNth(15), clock, spawnEnemy(this, {x: 0, y: 0})),
     doPhysics(this),
@@ -287,7 +272,7 @@ export default function Main (clock) {
     checkCollisions(this),
     withClock(everyNth(10), clock, killExpired(this)),
     withClock(everyNth(30), clock, checkWinningCondition(this)),
-    //drawDebug(this)
+    drawDebug(this)
   ]
   let ui = new Pixi.Container
   let fg = new Pixi.Container
