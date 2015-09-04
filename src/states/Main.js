@@ -13,7 +13,7 @@ import {remove, propLessThan, both, either, instanceOf, all} from '../utils'
 const isPlayer = instanceOf(Monster)
 const isFireball = instanceOf(Fireball)
 const isEnemy = instanceOf(Enemy)
-const {abs, round} = Math
+const {abs, round, sin, cos} = Math
 //TODO: need runtime code to handle different platforms for now use based on dev-os
 //WINDOWS
 const BUTTONS = {
@@ -87,10 +87,7 @@ function * killSequence (state, entity) {
     )
   ] 
 
-  while (tasks.length > 0) {
-    runTasks(tasks)
-    yield
-  }
+  while (tasks.length > 0) yield runTasks(tasks)
 }
 
 function * doFor (fn, duration) {
@@ -245,8 +242,8 @@ function * spawnEnemy (state, position) {
   while (true) {
     let thisTime = state.game.clock.thisTime
     let enemy = new Enemy({
-      x: 200 * Math.sin(thisTime), 
-      y: 200 * Math.cos(thisTime)
+      x: 200 * sin(thisTime), 
+      y: 200 * cos(thisTime)
     }, thisTime)
 
     enemy.velocity.x = 2
@@ -272,7 +269,7 @@ export default function Main (clock) {
     checkCollisions(this),
     withClock(everyNth(10), clock, killExpired(this)),
     withClock(everyNth(30), clock, checkWinningCondition(this)),
-    drawDebug(this)
+    //drawDebug(this)
   ]
   let ui = new Pixi.Container
   let fg = new Pixi.Container
@@ -303,5 +300,4 @@ export default function Main (clock) {
   this.stage.addChild(fg)
   this.stage.addChild(ui)
   this.player = m
-  this.paused = false
 }

@@ -5,31 +5,29 @@ import GameState from '../GameState'
 
 function * updateUI (state) {
   while (true) {
-    yield 
     let {gameoverText} = state.uiIndex
     let {thisTime} = state.game.clock
     
-    gameoverText.scale.x = 1 - (Math.sin(thisTime / 300) * 0.1)
-    gameoverText.scale.y = 1 - (Math.sin(thisTime / 300) * 0.1)
+    gameoverText.scale.x = 1 - (Math.cos(thisTime / 10) * 0.1)
+    gameoverText.scale.y = 1 - (Math.cos(thisTime / 10) * 0.1)
+    yield 
   }
 }
 
 function * listenForButtonPress ({game}) {
   while (true) {
-    yield
     let pads = navigator.getGamepads()
     let controller = pads[0]
-
-    if (!controller) continue
 
     for (let button of controller.buttons) {
       //TODO: have slightly better api for specifying new state
       if (button.pressed) game.state = game.states[1]
     }
+    yield
   }
 }
 
-export default function GameOver () {
+export default function GameOver (clock) {
   let tasks = [
     updateUI(this),
     listenForButtonPress(this)
