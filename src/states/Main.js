@@ -3,7 +3,7 @@
 import Pixi from 'pixi.js'
 import GameState from '../GameState'
 import World from '../World'
-import {Monster, Fireball, Enemy, Spawn} from '../entities'
+import {Axe, Monster, Fireball, Enemy} from '../entities'
 import {has, whereProp, hasThree} from '../predicates'
 import {findWhere} from '../query'
 import {withClock} from '../tasks'
@@ -14,6 +14,7 @@ import {updateGamepadState} from '../input/gamepad'
 const isPlayer = instanceOf(Monster)
 const isFireball = instanceOf(Fireball)
 const isEnemy = instanceOf(Enemy)
+const isAxe = instanceOf(Axe)
 const {abs, round, sin, cos} = Math
 const BUTTONS = {
   UP: 12,
@@ -73,13 +74,11 @@ function * getColliderPairs (root) {
   }
 }
 
-function * killSequence (state, entity) {
-  const {death} = state.sounds
-
+function * killSequence (sound, state, entity) {
   entity.dying = true
   entity.alpha = 0.5
   entity.doPhysics = false
-  death.play()
+  sound.play()
 
   let waitTimer = 0
 
@@ -103,12 +102,16 @@ function * killSequence (state, entity) {
 
 function * checkCollisions (state) {
   while (true) {
-    let {fg, tasks} = state 
+    const {fg, player, tasks} = state 
+    const {death, fireballDeath} = state.sounds
 
     for (let [e1, e2] of getColliderPairs(fg)) {
       if (either(isPlayer, isEnemy, e1, e2)) {
-        tasks.push(killSequence(state, e1))
-        tasks.push(killSequence(state, e2))
+        tasks.push(killSequence(fireballDeath, state, e1 instanceof Enemy ? e1 : e2))
+      }
+      if (either(isEnemy, isAxe, e1, e2)) {
+        tasks.push(killSequence(fireballDeath, state, e1 instanceof Enemy ? e1 : e2))
+        if (!player.dying) tasks.push(killSequence(death, state, player))
       }
     }
     yield
@@ -133,6 +136,7 @@ function * doPhysics (state) {
 
       e.velocity.x += e.acceleration.x * dT 
       e.position.x += e.velocity.x * dT 
+      e.rotation += e.angularVelocity
       if (groundPenetrationDepth > 0 && !e.dying) {
         e.velocity.y = -1 * e.elasticity * e.velocity.y
         e.position.y = world.y - (e.height / 2)
@@ -182,7 +186,6 @@ function * processInput (state) {
         let y = player.position.y
         let fb = new Fireball({x, y}, clock)
 
-
         fireball.play()
         fb.velocity.y = -15
         fb.velocity.x = scalar * 20
@@ -223,10 +226,10 @@ function * spawnEnemy (state, position) {
     let thisTime = state.game.clock.thisTime
     let enemy = new Enemy({
       x: 200 * sin(thisTime), 
-      y: 200 * cos(thisTime)
+      y: 200 * cos(thisTime) + 200
     }, thisTime)
 
-    enemy.velocity.x = 2
+    enemy.velocity.x = 10
     enemy.velocity.y = 0
     state.fg.addChild(enemy)
     yield 
@@ -254,9 +257,11 @@ export default function Main (clock) {
   let fg = new Pixi.Container
   let bg = new Pixi.Container
   let m = new Monster({x: 500, y: 200})
+  let axe = new Axe({x: 600, y: 200})
   let debug = new Pixi.Graphics
   let sounds = {
-    fireball: new Howl({urls: ['mp3s/fireball.mp3']}), 
+    fireball: new Howl({urls: ['mp3s/fireball.mp3']}),
+    fireballDeath: new Howl({urls: ['mp3s/fireballdeath.mp3']}),
     death: new Howl({urls: ['mp3s/death.mp3']}), 
     gameover: new Howl({urls: ['mp3s/gameover.mp3']})
   }
@@ -268,6 +273,7 @@ export default function Main (clock) {
   //setup fg
   fg.zPosition = 0
   fg.addChild(m)
+  fg.addChild(axe)
 
   //setup bg
   bg.zPosition = -10

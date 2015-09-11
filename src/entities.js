@@ -17,7 +17,9 @@ class CoreSprite extends Sprite {
     this.position = position 
     this.velocity = {x: 0, y: 0}
     this.acceleration = {x: 0, y: GRAVITY}
+    this.angularVelocity = 0
     this.doPhysics = true
+    this.elasticity = 0
     this.dying = false
     this.dead = false
 
@@ -55,7 +57,15 @@ export class Enemy extends CoreSprite {
     super('fireball.gif', position)
     this.scale.x = 0.4
     this.scale.y = 0.4
-    this.deathTime = spawnTime + 120
+    this.deathTime = spawnTime + 240
     this.elasticity = 1.0
+    this.angularVelocity = 1
+  }
+}
+
+export class Axe extends CoreSprite {
+  constructor (position) {
+    super('axe.gif', position) 
+    this.elasticity = 0
   }
 }

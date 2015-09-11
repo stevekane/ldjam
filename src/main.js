@@ -21,6 +21,8 @@ const tasks = []
 const game = new Game(clock, [intro, main, gameOver], tasks)
 
 game.state = main
+game.backgroundMusic = new Howl({urls: ['mp3s/bgm1.mp3'], loop: true, volume: 0.2})
+game.backgroundMusic.play()
 document.body.appendChild(renderer.view)
 setInterval(() => update(game), TICK_RATE)
 render(renderer, game)

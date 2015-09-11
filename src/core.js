@@ -10,6 +10,7 @@ export function Game (clock, states) {
   this.states = states
   this.state = states[0]
   this.audio = new AudioSystem(['music', 'main'])
+  this.backgroundMusic = null
   this.inputs = {
     keyboard: new KeyboardState,
     gamepads: [new GamepadState, new GamepadState, new GamepadState, new GamepadState] 
