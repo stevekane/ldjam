@@ -1,5 +1,7 @@
 'use strict'
 
+import {Howl} from 'howler'
+
 import Pixi from 'pixi.js'
 import Clock from './Clock'
 import {Game, update, render} from './core'

@@ -11,6 +11,15 @@ export function * withClock (fn, clock, task) {
   while (!fn(clock) || !task.next().done) yield
 }
 
+export function * forever (fn) {
+  return function * doForever () {
+    while (true) {
+      fn()
+      yield
+    } 
+  }
+}
+
 export function runTasks (tasks) {
   var i = 0
 
